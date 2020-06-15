@@ -1,0 +1,22 @@
+{
+    "name": "codeigniter4-xpander/api",
+    "description": "CodeIgniter 4 Xpander API",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Bagus A Priambada",
+            "email": "iam.adty@gmail.com"
+        }
+    ],
+    "require": {
+        "codeigniter4-xpander/core": "dev-develop"
+    },
+    "autoload": {
+        "psr-4": {
+            "CI4Xpander_API\\": "src/"
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
