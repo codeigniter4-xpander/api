@@ -116,21 +116,17 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
 
     public function show($id = null)
     {
-
     }
 
     public function create()
     {
-
     }
 
     public function update($id = null)
     {
-
     }
 
     public function delete($id = null)
     {
-
     }
 }
