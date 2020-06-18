@@ -19,6 +19,10 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
     protected $useCustomIndexQuery = false;
     protected $customIndexQuery;
 
+    protected $time;
+    protected $jwk;
+    protected $jws;
+
     public function initController(\CodeIgniter\HTTP\RequestInterface $request, \CodeIgniter\HTTP\ResponseInterface $response, \Psr\Log\LoggerInterface $logger)
     {
         parent::initController($request, $response, $logger);
@@ -56,6 +60,8 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
         }
 
         $this->offset = $this->page * $this->limit - $this->limit;
+
+        $this->time = time();
     }
 
     public function index()
