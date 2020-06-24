@@ -13,19 +13,8 @@ class ApiAuth extends \CI4Xpander\Filters\Auth
 
     public function before(\CodeIgniter\HTTP\RequestInterface $request, $params = null)
     {
-        \Config\Services::validateJWS($request);
-
-        if (is_array($params)) {
-            if (in_array('outside', $params)) {
-
-            } elseif (in_array('inside', $params)) {
-    
-            } else {
-                return $this->failUnauthorized();
-            }
-        } else {
-            d($request);
-            // return $this->failUnauthorized();
+        if (!\Config\Services::isVerifiedToken($request)) {
+            return $this->failUnauthorized();
         }
     }
 }
