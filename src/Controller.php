@@ -19,10 +19,6 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
     protected $useCustomIndexQuery = false;
     protected $customIndexQuery;
 
-    protected $time;
-    protected $jwk;
-    protected $jws;
-
     public function initController(\CodeIgniter\HTTP\RequestInterface $request, \CodeIgniter\HTTP\ResponseInterface $response, \Psr\Log\LoggerInterface $logger)
     {
         parent::initController($request, $response, $logger);
@@ -60,12 +56,6 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
         }
 
         $this->offset = $this->page * $this->limit - $this->limit;
-
-        $this->time = time();
-        $this->jwk = \Jose\Component\KeyManagement\JWKFactory::createFromSecret(env('api.secret_key', 'ci4xpander'), [
-            'alg' => 'HS256',
-            'use' => 'sig'
-        ]);
     }
 
     public function index()
