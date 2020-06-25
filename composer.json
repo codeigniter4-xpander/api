@@ -11,9 +11,10 @@
     ],
     "require": {
         "codeigniter4-xpander/core": "dev-develop",
-        "web-token/jwt-signature": "^2.1",
+        "web-token/jwt-easy": "^2.1",
         "web-token/jwt-signature-algorithm-hmac": "^2.1",
-        "web-token/jwt-key-mgmt": "^2.1"
+        "web-token/jwt-key-mgmt": "^2.1",
+        "danielstjules/stringy": "^3.1"
     },
     "autoload": {
         "psr-4": {

@@ -5,6 +5,10 @@ class ApiAuth extends \CI4Xpander\Filters\Auth
     use \CodeIgniter\API\ResponseTrait;
 
     public $reponse;
+    public $authorization;
+    public $token;
+    public $check = [];
+    public $jwt;
 
     public function __construct()
     {
@@ -13,7 +17,16 @@ class ApiAuth extends \CI4Xpander\Filters\Auth
 
     public function before(\CodeIgniter\HTTP\RequestInterface $request, $params = null)
     {
-        if (!\Config\Services::isVerifiedToken($request)) {
+        $this->authorization = $request->getHeader('Authorization');
+        if (!is_null($this->authorization)) {
+            if (\Stringy\StaticStringy::startsWith($this->authorization->getValue(), 'Bearer')) {
+                $this->token = \Stringy\StaticStringy::substr($this->authorization->getValue(), 7);
+
+                $this->jwt = \Config\Services::JWSLoader($this->token, $this->check);
+            } else {
+                return $this->failUnauthorized();
+            }
+        } else {
             return $this->failUnauthorized();
         }
     }
