@@ -42,10 +42,7 @@ class Services extends \CodeIgniter\Config\Services
             return static::getSharedInstance('jwk');
         }
 
-        return \Jose\Component\KeyManagement\JWKFactory::createFromSecret(env('api.secret_key', 'ci4xpander'), [
-            'alg' => 'HS256',
-            'use' => 'sig'
-        ]);
+        return new \Jose\Component\Core\JWK((array) config('Api'));
     }
 
     public static function tokenSerializer(bool $shared = true)
@@ -55,5 +52,16 @@ class Services extends \CodeIgniter\Config\Services
         }
 
         return new \Jose\Component\Signature\Serializer\CompactSerializer();
+    }
+
+    public static function tokenVerifier(bool $shared = true)
+    {
+        if ($shared) {
+            return static::getSharedInstance('tokenVerifier');
+        }
+
+        return new \Jose\Component\Signature\JWSVerifier(
+            \Config\Services::tokenAlgorithmManager()
+        );
     }
 }
