@@ -19,6 +19,12 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
     protected $useCustomIndexQuery = false;
     protected $customIndexQuery;
 
+    protected $CRUD = [
+        'enabled' => false,
+        'index' => [],
+        'model' => null
+    ];
+
     public function initController(\CodeIgniter\HTTP\RequestInterface $request, \CodeIgniter\HTTP\ResponseInterface $response, \Psr\Log\LoggerInterface $logger)
     {
         parent::initController($request, $response, $logger);
@@ -60,7 +66,17 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
 
     public function index()
     {
+        if ($this->CRUD['enabled']) {
+            if (isset($this->CRUD['index']['query'])) {
+
+            }
+        }
+
+        return $this->failNotFound();
+
         if ($this->useCustomIndexQuery) {
+            
+        } else {
             /** @var \CodeIgniter\Database\BaseBuilder */
             $modelBuilder = $this->model->builder();
 
@@ -103,13 +119,6 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
                     'current_page' => $this->page,
                     'total_page' => ceil($totalFiltered / $this->limit)
                 ]
-            ]);
-        } else {
-            $builder = \Config\Database::connect();
-            $builder->query($this->customIndexQuery, [
-                'limit' => $this->limit,
-                'offset' => $this->offset,
-                'search' => $this->search
             ]);
         }
     }
