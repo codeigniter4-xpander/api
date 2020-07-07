@@ -8,21 +8,12 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
 
     protected $format = 'json';
 
-    protected $search;
-    protected $searchFields;
-    protected $page = 1;
-    protected $limit = 10;
-    protected $minLimit = 10;
-    protected $maxLimit = 100;
-    protected $offset = 0;
-
-    protected $useCustomIndexQuery = false;
-    protected $customIndexQuery;
-
     protected $CRUD = [
-        'enabled' => false,
-        'index' => [],
-        'model' => null
+        'enable' => false,
+        'index' => [
+            'minLimit' => 10,
+            'maxLimit' => 100,
+        ]
     ];
 
     public function initController(\CodeIgniter\HTTP\RequestInterface $request, \CodeIgniter\HTTP\ResponseInterface $response, \Psr\Log\LoggerInterface $logger)
@@ -35,91 +26,118 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
         $this->_init();
     }
 
-    protected function _init()
+    protected function setCRUD($CRUD = [])
     {
-        $this->search = preg_replace('/\s+/', '%', $this->request->getGet('search')) ?? '';
+        $this->CRUD = array_merge_recursive($this->CRUD, $CRUD);
+        return $this;
+    }
 
-        $this->page = $this->request->getGet('page') ?? 1;
-        if (is_numeric($this->page)) {
-            $this->page = intval($this->page);
-            if ($this->page < 1) {
-                $this->page = 1;
+    protected function _doCRUD($function = null)
+    {
+        if (isset($this->CRUD)) {
+            if (isset($this->CRUD['enable'])) {
+                if ($this->CRUD['enable']) {
+                    if (!is_null($function)) {
+                        return $function();
+                    }
+                }
             }
-        } else {
-            $this->page = 1;
         }
 
-        $this->limit = $this->request->getGet('limit') ?? 10;
-        if (is_numeric($this->limit)) {
-            $this->limit = intval($this->limit);
-            if ($this->limit < $this->minLimit) {
-                $this->limit = $this->minLimit;
-            } elseif ($this->limit > $this->maxLimit) {
-                $this->limit = $this->maxLimit;
-            }
-        } else {
-            $this->limit = 10;
-        }
-
-        $this->offset = $this->page * $this->limit - $this->limit;
+        return null;
     }
 
     public function index()
     {
-        if ($this->CRUD['enabled']) {
-            if (isset($this->CRUD['index']['query'])) {
+        $crud = $this->_doCRUD(function () {
+            $error = isset($this->CRUD['index']) ? (
+                isset($this->CRUD['index']['query']) ? false : true
+            ) : true;
 
-            }
-        }
-
-        return $this->failNotFound();
-
-        if ($this->useCustomIndexQuery) {
-            
-        } else {
-            /** @var \CodeIgniter\Database\BaseBuilder */
-            $modelBuilder = $this->model->builder();
-
-            $total = $modelBuilder->countAll(false);
-
-            if (!empty($this->search)) {
-                $searchField = $this->searchField;
-                if (is_null($searchField)) {
-                    $searchField = $this->model->allowedFields;
-                } else {
-                    if (count($searchField) == 0) {
-                        $searchField = $this->model->allowedFields;
-                    }
-                }
-
-                $i = 0;
-                foreach ($searchField as $field) {
-                    if ($i == 0) {
-                        $modelBuilder->like($field, $this->search, 'both', null, true);
-                    } else {
-                        $modelBuilder->orLike($field, $this->search, 'both', null, true);
-                    }
-                    $i++;
-                }
+            if ($error) {
+                return $this->failServerError();
             }
 
-            $totalFiltered = $modelBuilder->countAllResults(false);
+            $search = preg_replace('/\s+/', '%', $this->request->getGet('search')) ?? '';
 
-            $modelBuilder->limit($this->limit, $this->offset);
+            $page = $this->request->getGet('page') ?? 1;
+            if (is_numeric($page)) {
+                $page = intval($page);
+                if ($page < 1) {
+                    $page = 1;
+                }
+            } else {
+                $page = 1;
+            }
 
-            $data = $modelBuilder->get()->getResult();
+            $limit = $this->request->getGet('limit') ?? $this->CRUD['index']['minLimit'];
+            if (is_numeric($limit)) {
+                $limit = intval($limit);
+                if ($limit < $this->CRUD['index']['minLimit']) {
+                    $limit = $this->CRUD['index']['minLimit'];
+                } elseif ($limit > $this->CRUD['index']['maxLimit']) {
+                    $limit = $this->CRUD['index']['maxLimit'];
+                }
+            } else {
+                $limit = $this->CRUD['index']['minLimit'];
+            }
+
+            $offset = $page * $limit - $limit;
+
+            $query = !is_string($this->CRUD['index']['query']) ? (
+                $this->CRUD['index']['query']()->getCompiledSelect()
+            ) : $this->CRUD['index']['query'];
+
+            $builder = \Config\Database::connect()->table('q')->from("({$query}) q", true);
+            $totalRecords = $builder->countAllResults(false);
+
+            if (isset($search)) {
+                if (!empty($search)) {
+                    $i = 0;
+                    foreach ($this->CRUD['index']['searchColumns'] ?? [] as $column) {
+                        if ($i == 0) {
+                            $builder->like($column, $search, 'both', null, true);
+                        } else {
+                            $builder->orLike($column, $search, 'both', null, true);
+                        }
+
+                        $i++;
+                    }
+                }
+            }
+
+            $filteredRecords = $builder->countAllResults(false);
+
+            $builder->limit($limit, $offset);
+
+            $paginationMode = $this->CRUD['index']['paginationMode'] ?? null;
+
+            $totalPage = ceil($filteredRecords / $limit);
+            if ($paginationMode == 'more') {
+                $pagination = [
+                    'more' => $page < $totalPage
+                ];
+            } else {
+                $pagination = [
+                    'limit' => $limit,
+                    'current_page' => $page,
+                    'total_page' => $totalPage
+                ];
+            }
 
             return $this->respond([
                 'status' => true,
-                'data' => $data,
-                'total_rows' => $total,
-                'total_filtered_rows' => $totalFiltered,
-                'pagination' => [
-                    'limit' => $this->limit,
-                    'current_page' => $this->page,
-                    'total_page' => ceil($totalFiltered / $this->limit)
-                ]
+                'data' => $builder->get()->getResult(),
+                'total_rows' => $totalRecords,
+                'total_filtered_rows' => $filteredRecords,
+                'pagination' => $pagination
             ]);
+        });
+
+        if (!is_null($crud)) {
+            return $crud;
+        } else {
+            return $this->failNotFound();
         }
     }
 
