@@ -88,7 +88,9 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
                 $this->CRUD['index']['query']()->getCompiledSelect()
             ) : $this->CRUD['index']['query'];
 
-            $builder = \Config\Database::connect()->table('q')->from("({$query}) q", true);
+            $builder = \Config\Database::connect()
+                ->table('ci4x_api_index_temporary_table')
+                ->from("({$query}) ci4x_api_index_temporary_table", true);
             $totalRecords = $builder->countAllResults(false);
 
             if (isset($search)) {
@@ -110,27 +112,16 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
 
             $builder->limit($limit, $offset);
 
-            $paginationMode = $this->CRUD['index']['paginationMode'] ?? null;
-
-            $totalPage = ceil($filteredRecords / $limit);
-            if ($paginationMode == 'more') {
-                $pagination = [
-                    'more' => $page < $totalPage
-                ];
-            } else {
-                $pagination = [
-                    'limit' => $limit,
-                    'current_page' => $page,
-                    'total_page' => $totalPage
-                ];
-            }
-
             return $this->respond([
                 'status' => true,
                 'data' => $builder->get()->getResult(),
                 'total_rows' => $totalRecords,
                 'total_filtered_rows' => $filteredRecords,
-                'pagination' => $pagination
+                'pagination' => [
+                    'limit' => $limit,
+                    'current_page' => $page,
+                    'total_page' => ceil($filteredRecords / $limit)
+                ]
             ]);
         });
 
