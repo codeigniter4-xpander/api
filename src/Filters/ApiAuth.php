@@ -24,9 +24,15 @@ class ApiAuth extends \CI4Xpander\Filters\Auth
 
                 $this->jwt = \Config\Services::JWSLoader($this->token, $this->check);
             } else {
+                \Config\Services::modelTracker()->setCreatedBy(0);
+                \Config\Services::modelTracker()->setUpdatedBy(0);
+                \Config\Services::modelTracker()->setDeletedBy(0);
                 return $this->failUnauthorized();
             }
         } else {
+            \Config\Services::modelTracker()->setCreatedBy(0);
+            \Config\Services::modelTracker()->setUpdatedBy(0);
+            \Config\Services::modelTracker()->setDeletedBy(0);
             return $this->failUnauthorized();
         }
     }
