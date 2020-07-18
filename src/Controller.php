@@ -84,9 +84,16 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
 
             $offset = $page * $limit - $limit;
 
-            $query = !is_string($this->CRUD['index']['query']) ? (
-                $this->CRUD['index']['query']()->getCompiledSelect()
-            ) : $this->CRUD['index']['query'];
+            if (is_string($this->CRUD['index']['query'])) {
+                $query = $this->CRUD['index']['query'];
+            } else if (is_a($this->CRUD['index']['query'], \CodeIgniter\Database\BaseBuilder::class)) {
+                $query = $this->CRUD['index']['query']->getCompiledSelect();
+            } elseif (is_callable($this->CRUD['index']['query'])) {
+                $query = $this->CRUD['index']['query']();
+                if (is_a($query, \CodeIgniter\Database\BaseBuilder::class)) {
+                    $query = $query->getCompiledSelect();
+                }
+            }
 
             $builder = \Config\Database::connect()
                 ->table('ci4x_api_index_temporary_table')
