@@ -2,6 +2,8 @@
 
 namespace CI4Xpander_API;
 
+use CodeIgniter\Database\BaseConnection;
+
 class Controller extends \CodeIgniter\RESTful\ResourceController
 {
     use \CI4Xpander\ClassInitializerTrait, \CI4Xpander\PropertyInitializerTrait;
@@ -38,7 +40,28 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
             if (isset($this->CRUD['enable'])) {
                 if ($this->CRUD['enable']) {
                     if (!is_null($function)) {
-                        return $function();
+                        $table = null;
+
+                        /** @var \CI4Xpander\Model */
+                        $model = $this->CRUD['model'] ?? null;
+
+                        if (!is_null($model)) {
+                            if (!is_a($model, \CI4Xpander\Model::class)) {
+                                $model = $model::create();
+                            }
+                            $table = $model->getTable();
+                        }
+
+                        $query = null;
+                        if (isset($this->CRUD['index']['query'])) {
+                            $query = $this->CRUD['index']['query'];
+                        } else {
+                            if (!is_null($model)) {
+                                $query = $model->builder();
+                            }
+                        }
+
+                        return $function($table, $model, $query);
                     }
                 }
             }
@@ -49,12 +72,10 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
 
     public function index()
     {
-        $crud = $this->_doCRUD(function () {
-            $error = isset($this->CRUD['index']) ? (
-                isset($this->CRUD['index']['query']) ? false : true
-            ) : true;
+        $crud = $this->_doCRUD(function (string $table, \CI4Xpander\Model $model, $query) {
+            $query = \CI4Xpander\Helpers\Database\Query\Builder::forceQueryToString($query, \Config\Database::connect(), $model);
 
-            if ($error) {
+            if (is_null($query)) {
                 return $this->failServerError();
             }
 
@@ -83,17 +104,6 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
             }
 
             $offset = $page * $limit - $limit;
-
-            if (is_string($this->CRUD['index']['query'])) {
-                $query = $this->CRUD['index']['query'];
-            } else if (is_a($this->CRUD['index']['query'], \CodeIgniter\Database\BaseBuilder::class)) {
-                $query = $this->CRUD['index']['query']->getCompiledSelect();
-            } elseif (is_callable($this->CRUD['index']['query'])) {
-                $query = $this->CRUD['index']['query']();
-                if (is_a($query, \CodeIgniter\Database\BaseBuilder::class)) {
-                    $query = $query->getCompiledSelect();
-                }
-            }
 
             $builder = \Config\Database::connect()
                 ->table('ci4x_api_index_temporary_table')
@@ -141,17 +151,197 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
 
     public function show($id = null)
     {
+        if (is_null($id)) {
+            return $this->failNotFound();
+        }
+
+        return $this->_doCRUD(function (string $table, \CI4Xpander\Model $model, $query) use ($id) {
+            $query = \CI4Xpander\Helpers\Database\Query\Builder::forceQueryToString($query, \Config\Database::connect(), $model);
+            if (is_null($query)) {
+                return $this->failServerError();
+            }
+
+            $item = \Config\Database::connect()
+                ->table('ci4x_api_show_temporary_table')
+                ->from("({$query}) ci4x_api_show_temporary_table")
+                ->where('id', $id);
+
+            if (is_null($item)) {
+                return $this->failNotFound();
+            }
+
+            return $this->respond([
+                'status' => true,
+                'data' => $item
+            ]);
+        }) ?? $this->failNotFound();
     }
 
     public function create()
     {
+        return $this->_doCRUD(function (string $table, \CI4Xpander\Model $model, $query) {
+            if (is_null($model)) {
+                if (is_null($table)) {
+                    return $this->failServerError();
+                }
+            }
+
+            $params = $this->request->getJSON();
+
+            if (isset($this->CRUD['create']['validation'])) {
+                $validator = \Config\Services::validation();
+
+                if (!$validator->setRules($this->CRUD['create']['validation'])->run((array) $params)) {
+                    return $this->failValidationError(json_encode($validator->getErrors()));
+                }
+            }
+
+            return $this->_actionTransaction(function (BaseConnection $builder) use ($table, $model, $params) {
+                if (!is_null($model)) {
+                    $id = $model->insert((array) $params);
+                    return $this->respondCreated([
+                        'status' => true,
+                        'data' => [
+                            'id' => $id
+                        ]
+                    ]);
+                } elseif (!is_null($table)) {
+                    $table = $builder->table($table);
+                    $table->insert((array) $params);
+                    $id = $builder->insertID();
+                    return $this->respondCreated([
+                        'status' => true,
+                        'data' => [
+                            'id' => $id
+                        ]
+                    ]);
+                } else {
+                    return null;
+                }
+            }) ?? $this->failServerError();
+
+        }) ?? $this->failNotFound();
     }
 
     public function update($id = null)
     {
+        if (is_null($id)) {
+            return $this->failNotFound();
+        }
+
+        return $this->_doCRUD(function (string $table, \CI4Xpander\Model $model, $query) use ($id) {
+            if (is_null($model) && is_null($model)) {
+                return $this->failServerError();
+            }
+
+            $query = \CI4Xpander\Helpers\Database\Query\Builder::forceQueryToString($query, \Config\Database::connect(), $model);
+            if (is_null($query)) {
+                return $this->failServerError();
+            }
+
+            $item = \Config\Database::connect()
+                ->table('ci4x_api_update_temporary_table')
+                ->from("({$query}) ci4x_api_update_temporary_table")
+                ->where('id', $id);
+
+            if (is_null($item)) {
+                return $this->failNotFound();
+            }
+
+            $params = $this->request->getJSON();
+
+            if (isset($this->CRUD['update']['validation'])) {
+                $validator = \Config\Services::validation();
+
+                if (!$validator->setRules($this->CRUD['update']['validation'])->run((array) $params)) {
+                    return $this->failValidationError(json_encode($validator->getErrors()));
+                }
+            }
+
+            return $this->_actionTransaction(function (BaseConnection $builder) use ($table, $model, $params, $item) {
+                if (!is_null($model)) {
+                    $update = $model->update($item->id, (array) $params);
+                    return $this->respondUpdated(array_merge([
+                        'status' => $update,
+                    ], $update ? [
+                        'data' => array_merge((array) $item, (array) $params),
+                    ] : []));
+                } elseif (!is_null($table)) {
+
+                } else {
+                    return null;
+                }
+            });
+        }) ?? $this->failNotFound();
     }
 
     public function delete($id = null)
     {
+        if (is_null($id)) {
+            return $this->failNotFound();
+        }
+
+        return $this->_doCRUD(function (string $table, \CI4Xpander\Model $model, $query) use ($id) {
+            if (is_null($model) && is_null($model)) {
+                return $this->failServerError();
+            }
+
+            $query = \CI4Xpander\Helpers\Database\Query\Builder::forceQueryToString($query, \Config\Database::connect(), $model);
+            if (is_null($query)) {
+                return $this->failServerError();
+            }
+
+            $item = \Config\Database::connect()
+                ->table('ci4x_api_delete_temporary_table')
+                ->from("({$query}) ci4x_api_delete_temporary_table")
+                ->where('id', $id);
+
+            if (is_null($item)) {
+                return $this->failNotFound();
+            }
+
+            $params = $this->request->getJSON();
+
+            if (isset($this->CRUD['delete']['validation'])) {
+                $validator = \Config\Services::validation();
+
+                if (!$validator->setRules($this->CRUD['delete']['validation'])->run((array) $params)) {
+                    return $this->failValidationError(json_encode($validator->getErrors()));
+                }
+            }
+
+            return $this->_actionTransaction(function (BaseConnection $builder) use ($table, $model, $params, $item) {
+                if (!is_null($model)) {
+                    $delete = $model->delete($item->id);
+                    return $this->respondDeleted(array_merge([
+                        'status' => $delete,
+                    ], $delete ? [
+                        'data' => array_merge((array) $item, (array) $params)
+                    ] : []));
+                } elseif (!is_null($table)) {
+
+                } else {
+                    return null;
+                }
+            });
+        }) ?? $this->failNotFound();
+    }
+
+    protected function _actionTransaction(callable $function = null)
+    {
+        if (!is_null($function)) {
+            $databaseConnection = \Config\Database::connect();
+            $databaseConnection->transStart();
+            $result = $function($databaseConnection);
+            $databaseConnection->transComplete();
+
+            if ($databaseConnection->transStatus()) {
+                return $result;
+            } else {
+                return $this->failServerError(json_encode($databaseConnection->error()));
+            }
+        }
+
+        return null;
     }
 }
