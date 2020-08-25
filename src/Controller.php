@@ -34,7 +34,7 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
         return $this;
     }
 
-    protected function _doCRUD($function = null)
+    protected function _doCRUD(?callable $function)
     {
         if (isset($this->CRUD)) {
             if (isset($this->CRUD['enable'])) {
@@ -72,7 +72,7 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
 
     public function index()
     {
-        $crud = $this->_doCRUD(function (string $table, \CI4Xpander\Model $model, $query) {
+        $crud = $this->_doCRUD(function (?string $table, ?\CI4Xpander\Model $model, $query = null) {
             $query = \CI4Xpander\Helpers\Database\Query\Builder::forceQueryToString($query, \Config\Database::connect(), $model);
 
             if (is_null($query)) {
@@ -155,7 +155,7 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
             return $this->failNotFound();
         }
 
-        return $this->_doCRUD(function (string $table, \CI4Xpander\Model $model, $query) use ($id) {
+        return $this->_doCRUD(function (?string $table, ?\CI4Xpander\Model $model, $query = null) use ($id) {
             $query = \CI4Xpander\Helpers\Database\Query\Builder::forceQueryToString($query, \Config\Database::connect(), $model);
             if (is_null($query)) {
                 return $this->failServerError();
@@ -179,7 +179,7 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
 
     public function create()
     {
-        return $this->_doCRUD(function (string $table, \CI4Xpander\Model $model, $query) {
+        return $this->_doCRUD(function (?string $table, ?\CI4Xpander\Model $model, $query = null) {
             if (is_null($model)) {
                 if (is_null($table)) {
                     return $this->failServerError();
@@ -196,7 +196,7 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
                 }
             }
 
-            return $this->_actionTransaction(function (BaseConnection $builder) use ($table, $model, $params) {
+            return $this->_actionTransaction(function (?BaseConnection $builder) use ($table, $model, $params) {
                 if (!is_null($model)) {
                     $id = $model->insert((array) $params);
                     return $this->respondCreated([
@@ -229,7 +229,7 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
             return $this->failNotFound();
         }
 
-        return $this->_doCRUD(function (string $table, \CI4Xpander\Model $model, $query) use ($id) {
+        return $this->_doCRUD(function (?string $table, ?\CI4Xpander\Model $model, $query = null) use ($id) {
             if (is_null($model) && is_null($model)) {
                 return $this->failServerError();
             }
@@ -281,7 +281,7 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
             return $this->failNotFound();
         }
 
-        return $this->_doCRUD(function (string $table, \CI4Xpander\Model $model, $query) use ($id) {
+        return $this->_doCRUD(function (?string $table, ?\CI4Xpander\Model $model, $query) use ($id) {
             if (is_null($model) && is_null($model)) {
                 return $this->failServerError();
             }
@@ -310,7 +310,7 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
                 }
             }
 
-            return $this->_actionTransaction(function (BaseConnection $builder) use ($table, $model, $params, $item) {
+            return $this->_actionTransaction(function (?BaseConnection $builder) use ($table, $model, $params, $item) {
                 if (!is_null($model)) {
                     $delete = $model->delete($item->id);
                     return $this->respondDeleted(array_merge([
@@ -327,7 +327,7 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
         }) ?? $this->failNotFound();
     }
 
-    protected function _actionTransaction(callable $function = null)
+    protected function _actionTransaction(?callable $function = null)
     {
         if (!is_null($function)) {
             $databaseConnection = \Config\Database::connect();
