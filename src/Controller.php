@@ -61,7 +61,10 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
                             }
                         }
 
-                        return $function($table, $model, $query);
+                        /** @var \CI4Xpander\Entity */
+                        $entity = $this->CRUD['entity'] ?? (!is_null($model) ? $model->getEntity() : null);
+
+                        return $function($query, $model, $entity, $table);
                     }
                 }
             }
@@ -72,7 +75,7 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
 
     public function index()
     {
-        $crud = $this->_doCRUD(function (?string $table, ?\CI4Xpander\Model $model, $query = null) {
+        $crud = $this->_doCRUD(function ($query = null, ?\CI4Xpander\Model $model, ?string $entity, ?string $table) {
             $query = \CI4Xpander\Helpers\Database\Query\Builder::forceQueryToString($query, \Config\Database::connect(), $model);
 
             if (is_null($query)) {
@@ -108,6 +111,9 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
             $builder = \Config\Database::connect()
                 ->table('ci4x_api_index_temporary_table')
                 ->from("({$query}) ci4x_api_index_temporary_table", true);
+
+            // return $this->respond($builder->getCompiledSelect());
+
             $totalRecords = $builder->countAllResults(false);
 
             if (isset($search)) {
@@ -129,16 +135,23 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
 
             $builder->limit($limit, $offset);
 
+            $data = [];
+            if (!is_null($entity)) {
+                $data = $builder->get()->getCustomResultObject($entity);
+            } else {
+                $data = $builder->get()->getResult();
+            }
+
             return $this->respond([
                 'status' => true,
-                'data' => $builder->get()->getResult(),
+                'data' => $data,
                 'total_rows' => $totalRecords,
                 'total_filtered_rows' => $filteredRecords,
                 'pagination' => [
                     'limit' => $limit,
                     'current_page' => $page,
                     'total_page' => ceil($filteredRecords / $limit)
-                ]
+                ],
             ]);
         });
 
@@ -155,7 +168,7 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
             return $this->failNotFound();
         }
 
-        return $this->_doCRUD(function (?string $table, ?\CI4Xpander\Model $model, $query = null) use ($id) {
+        return $this->_doCRUD(function ($query = null, ?\CI4Xpander\Model $model, ?string $entity, ?string $table) use ($id) {
             $query = \CI4Xpander\Helpers\Database\Query\Builder::forceQueryToString($query, \Config\Database::connect(), $model);
             if (is_null($query)) {
                 return $this->failServerError();
@@ -179,7 +192,7 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
 
     public function create()
     {
-        return $this->_doCRUD(function (?string $table, ?\CI4Xpander\Model $model, $query = null) {
+        return $this->_doCRUD(function ($query = null, ?\CI4Xpander\Model $model, ?string $entity, ?string $table) {
             if (is_null($model)) {
                 if (is_null($table)) {
                     return $this->failServerError();
@@ -229,7 +242,7 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
             return $this->failNotFound();
         }
 
-        return $this->_doCRUD(function (?string $table, ?\CI4Xpander\Model $model, $query = null) use ($id) {
+        return $this->_doCRUD(function ($query = null, ?\CI4Xpander\Model $model, ?string $entity, ?string $table) use ($id) {
             if (is_null($model) && is_null($model)) {
                 return $this->failServerError();
             }
@@ -281,7 +294,7 @@ class Controller extends \CodeIgniter\RESTful\ResourceController
             return $this->failNotFound();
         }
 
-        return $this->_doCRUD(function (?string $table, ?\CI4Xpander\Model $model, $query) use ($id) {
+        return $this->_doCRUD(function ($query = null, ?\CI4Xpander\Model $model, ?string $entity, ?string $table) use ($id) {
             if (is_null($model) && is_null($model)) {
                 return $this->failServerError();
             }
