@@ -18,6 +18,7 @@ class ApiAuth extends \CI4Xpander\Filters\Auth
     public function before(\CodeIgniter\HTTP\RequestInterface $request, $params = null)
     {
         $this->authorization = $request->getHeader('Authorization');
+
         if (!is_null($this->authorization)) {
             if (\Stringy\StaticStringy::startsWith($this->authorization->getValue(), 'Bearer')) {
                 $this->token = \Stringy\StaticStringy::substr($this->authorization->getValue(), 7);
