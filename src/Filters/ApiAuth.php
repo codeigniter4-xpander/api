@@ -9,18 +9,23 @@ class ApiAuth extends \CI4Xpander\Filters\Auth
     public $token;
     public $check = [];
     public $jwt;
+    public $authorizationHeaderName = 'authorization';
 
     public function __construct()
     {
         $this->response = \Config\Services::response();
     }
 
+    protected function getAuthorization(\CodeIgniter\HTTP\IncomingRequest $request) {
+        return $request->getHeader($this->authorizationHeaderName);
+    }
+
     public function before(\CodeIgniter\HTTP\RequestInterface $request, $params = null)
     {
-        $this->authorization = $request->getHeader('Authorization');
+        $this->authorization = $this->getAuthorization($request);
 
         if (!is_null($this->authorization)) {
-            if (\Stringy\StaticStringy::startsWith($this->authorization->getValue(), 'Bearer')) {
+            if (\Stringy\StaticStringy::startsWith($this->authorization->getValue(), 'Bearer ')) {
                 $this->token = \Stringy\StaticStringy::substr($this->authorization->getValue(), 7);
 
                 $this->jwt = \Config\Services::JWSLoader($this->token, $this->check);
