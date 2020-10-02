@@ -1,5 +1,7 @@
 <?php namespace CI4Xpander_API\Config;
 
+use CI4Xpander_API\Libraries\RouteCollection;
+
 class Services extends \CodeIgniter\Config\Services
 {
     public static function isVerifiedToken(\CodeIgniter\HTTP\IncomingRequest $request)
@@ -175,4 +177,14 @@ class Services extends \CodeIgniter\Config\Services
 
         return $jwt->run();
     }
+
+    public static function routes(bool $getShared = true)
+	{
+		if ($getShared)
+		{
+			return static::getSharedInstance('routes');
+		}
+
+		return new RouteCollection(static::locator(), config('Modules'));
+	}
 }
