@@ -16,6 +16,7 @@ class Route
         $method = $config['method'] ?? ['index' => 'index', 'item' => 'item', 'create' => 'create', 'update' => 'update', 'delete' => 'delete'];
 
         $version = $config['version'] ?? [];
+        $version[] = '';
 
         $url = $config['url'] ?? null;
 
@@ -69,6 +70,12 @@ class Route
 
                     $versionNAMESPACE = '\\' . $routes->getDefaultNamespace() . 'Api' . '\\' . 'V_' . str_replace('.', '_', $findVersion) . '\\' . rtrim($ns, '\\');
                 }
+            } else {
+                $findVersion = $versionsMap[array_keys($versionsMap)[0]];
+                $findVersion = $findVersion[array_keys($findVersion)[0]];
+                $findVersion = $findVersion[array_keys($findVersion)[0]];
+
+                $versionNAMESPACE = '\\' . $routes->getDefaultNamespace() . 'Api' . '\\' . 'V_' . str_replace('.', '_', $findVersion) . '\\' . rtrim($ns, '\\');
             }
 
             if (array_key_exists('index', $method)) {
