@@ -2,7 +2,7 @@
 
 class Route
 {
-    public static function create(\CI4Xpander_API\Libraries\RouteCollection $routes, $config = [])
+    public static function create(\CI4Xpander\Core\RouteCollection $routes, $config = [])
     {
         helper('array');
 
